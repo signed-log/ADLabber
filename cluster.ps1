@@ -1,6 +1,4 @@
-#Requires -Modules AutomatedLab
 #Requires -RunAsAdministrator
-#Requires -PSEdition Core
 
 param (
     [Parameter(Mandatory)]
@@ -26,36 +24,40 @@ param (
 [String]$ISOStore = "C:\LabSources\ISOs"
 
 function New-Lab {
-    [Int]$MainInterfaceIndex = (Get-NetRoute -DestinationPrefix '0.0.0.0/0', '::/0' | Sort-Object -Property { $_.InterfaceMetric + $_.RouteMetric } -Top 1).ifIndex
+    # Generate the lab
+
+    # Get the corresponding interface to bound the interface
+    [Int]$MainInterfaceIndex = if (((Get-NetRoute -DestinationPrefix '0.0.0.0/0', '::/0' | Sort-Object -Property { $_.InterfaceMetric + $_.RouteMetric }).ifIndex | Select-Object -Unique).Count -eq 1) { ((Get-NetRoute -DestinationPrefix '0.0.0.0/0', '::/0' | Sort-Object -Property { $_.InterfaceMetric + $_.RouteMetric }).ifIndex | Select-Object -Unique) } else { (Get-NetRoute -DestinationPrefix '0.0.0.0/0', '::/0' | Sort-Object -Property { $_.InterfaceMetric + $_.RouteMetric }).ifIndex[0] }
     [String]$MainInterface = Get-NetAdapter | Where-Object { $_.ifIndex -eq $MainInterfaceIndex } | Select-Object -ExpandProperty Name
 
     New-Item -ItemType Directory C:\AutomatedLab-VMs -ErrorAction SilentlyContinue
     New-LabDefinition -Name $LabName -DefaultVirtualizationEngine HyperV -VmPath "C:\AutomatedLab-VMs"
     Add-LabVirtualNetworkDefinition -Name $LabName
-    Add-LabVirtualNetworkDefinition -Name 'Default Switch' -HyperVProperties @{ SwitchType = 'External'; AdapterName = $MainInterface }
+    Add-LabVirtualNetworkDefinition -Name ("${LabName}_External") -HyperVProperties @{ SwitchType = 'External'; AdapterName = $MainInterface }
 }
 
 function Add-LabVMs {
     [String]$ServerEdition = if ( $NoGUI ) { "Windows Server 2019 Datacenter" } else { "Windows Server 2019 Datacenter (Desktop Experience)" }
-    [String]$Router_ServerEdition = if ( $RouterGUI ) { "Windows Server 2019 Datacenter (Desktop Experience)" } else { "Windows Server 2019 Datacenter" }
+    [String]$RouterServerEdition = if ( $RouterGUI ) { "Windows Server 2019 Datacenter (Desktop Experience)" } else { "Windows Server 2019 Datacenter" }
+    [string]$ClientOS = 'Windows 10 Education'
 
     # Declare main Root DC
-    Add-LabMachineDefinition -Name DC1 -Memory $RAM -OperatingSystem $ServerEdition -Roles RootDC -DomainName $DomainName -Network $LabName
+    Add-LabMachineDefinition -Name DC1 -Processors 4 -Memory $RAM -OperatingSystem $ServerEdition -Roles RootDC -DomainName $DomainName -Network $LabName
     # Enable Internet Access
     $netAdapter = @()
     $netAdapter += New-LabNetworkAdapterDefinition -VirtualSwitch $LabName
-    $netAdapter += New-LabNetworkAdapterDefinition -VirtualSwitch 'Default Switch' -UseDhcp
-    Add-LabMachineDefinition -Name Router1 -Memory 4GB -OperatingSystem $Router_ServerEdition -Roles Routing -NetworkAdapter $netAdapter -DomainName $DomainName
+    $netAdapter += New-LabNetworkAdapterDefinition -VirtualSwitch "${LabName}_External" -UseDhcp
+    Add-LabMachineDefinition -Name Router1 -Memory 4GB -OperatingSystem $RouterServerEdition -Roles Routing -NetworkAdapter $netAdapter -DomainName $DomainName
 
     # Declare Client Machines
     if ($Office) {
         Add-LabIsoImageDefinition -Name Office2016 -Path $ISOStore\ProPlusRetail.iso
-        Add-LabMachineDefinition -Name Client1 -Memory $RAM -OperatingSystem 'Windows 10 Education' -DomainName $DomainName -Network $LabName -Roles Office2016
-        Add-LabMachineDefinition -Name Client2 -Memory $RAM -OperatingSystem 'Windows 10 Education' -DomainName $DomainName -Network $LabName -Roles Office2016
+        Add-LabMachineDefinition -Name Client1 -Memory ($RAM / 2) -OperatingSystem $ClientOS -DomainName $DomainName -Network $LabName -Roles Office2016
+        Add-LabMachineDefinition -Name Client2 -Memory ($RAM / 2) -OperatingSystem $ClientOS -DomainName $DomainName -Network $LabName -Roles Office2016
     }
     else {
-        Add-LabMachineDefinition -Name Client1 -Memory $RAM -OperatingSystem 'Windows 10 Education' -DomainName $DomainName -Network $LabName
-        Add-LabMachineDefinition -Name Client2 -Memory $RAM -OperatingSystem 'Windows 10 Education' -DomainName $DomainName -Network $LabName
+        Add-LabMachineDefinition -Name Client1 -Memory ($RAM / 2) -OperatingSystem $ClientOS -DomainName $DomainName -Network $LabName
+        Add-LabMachineDefinition -Name Client2 -Memory ($RAM / 2) -OperatingSystem $ClientOS -DomainName $DomainName -Network $LabName
     }
 }
 
@@ -149,8 +151,9 @@ function Add-LabMockUsers {
                 -WhatIf
             $idx = $idx + 1
         }
-    } -Variable (Get-Variable -Name import_mockusers),(Get-Variable -Name OUName), (Get-Variable DCPath), (Get-Variable RootOUPath) -ComputerName DC1 -PassThru
+    } -Variable (Get-Variable -Name import_mockusers), (Get-Variable -Name OUName), (Get-Variable DCPath), (Get-Variable RootOUPath) -ComputerName DC1 -PassThru
 }
+
 
 New-Lab
 Add-LabVMs
