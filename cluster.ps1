@@ -155,16 +155,21 @@ function Add-LabMockUsers {
 }
 
 function Enable-Activation {
-  param(
-    [Parameter(Mandatory)]
-    [array]$ParameterName
-  )
+  Copy-LabFileItem -Path .\Microsoft-Activation-Scripts\MAS\Separate-Files-Version\HWID-KMS38_Activation -DestinationFolderPath C: -ComputerName (Get-LabVM)
+  Invoke-LabCommand -ScriptBlock {
+    cmd.exe /C "C:\HWID-KMS38_Activation\HWID_Activation.cmd /a"
+  } -ComputerName Client1,Client2 -PassThru
+  # Server Editions doesn't support HWID Activation
+  Invoke-LabCommand -ScriptBlock {
+    cmd.exe /C "C:\HWID-KMS38_Activation\KMS38_Activation.cmd /ap"
+  } -ComputerName DC1,Router1 -PassThru
 
 }
 
 New-Lab
 Add-LabVMs
 Install-Lab -ErrorAction Stop -DelayBetweenComputers 15
+Enable-Activation
 if ($MockData) {
   Add-LabDefaultOU
   Add-LabDefaultAdministrator
