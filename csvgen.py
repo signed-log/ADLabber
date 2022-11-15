@@ -2,6 +2,7 @@ import argparse
 import secrets
 import unicodedata
 from textwrap import shorten
+import re
 
 import pandas as pd
 from faker import Faker
@@ -29,6 +30,7 @@ args = parser.parse_args()
 DomainName = args.domain_name[0].lower()
 RootOU = args.root_ou[0].lower()
 
+space_regex = re.compile(r"\s+", re.UNICODE)
 
 def strip_accents(s):
     # Code licensed under CC-BY-SA 3.0 : https://stackoverflow.com/a/518232
@@ -46,8 +48,8 @@ def gen_data():
     PostalCode = []
     Country = []
     for id in range(150):
-        FirstName.append(strip_accents(fake.first_name()))
-        LastName.append(strip_accents(fake.last_name()))
+        FirstName.append(space_regex.sub("", strip_accents(fake.first_name())))
+        LastName.append(space_regex.sub("", strip_accents(fake.last_name())))
         EmployeeID.append(id)
         UserPrincipalName.append(
             f"{FirstName[-1][0].lower()}.{shorten(''.join(filter(str.isalpha, LastName[-1])), width=13, placeholder='').lower()}@{DomainName}"

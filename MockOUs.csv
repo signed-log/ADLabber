@@ -1,5 +1,5 @@
-OUName        , RootOU
-Employer      , MockUsers
-Students      , MockUsers
-Profs         , Employer
-Administrative, Employer
+OUName,RootOU
+Employer,MockUsers
+Students,MockUsers
+Profs,Employer
+Administrative,Employer
