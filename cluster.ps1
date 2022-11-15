@@ -234,21 +234,28 @@ function Enable-Activation {
   )
   Copy-LabFileItem -Path .\Microsoft-Activation-Scripts\MAS\All-In-One-Version -DestinationFolderPath C: -ComputerName (Get-LabVM)
   # Needed for Windows Server (non-GUI)
+  if (-not (Test-Path -PathType Leaf -Path .\ClipUp.exe))
+  {
+    curl.exe -O .\ClipUp.exe "https://msdl.microsoft.com/download/symbols/clipup.exe/5789984414b000/clipup.exe"
+  }
   Copy-LabFileItem -Path .\ClipUp.exe -DestinationFolderPath C:\All-In-One-Version -ComputerName (Get-LabVM)
   # Server Editions doesn't support HWID Activation
   Invoke-LabCommand -ScriptBlock {
-    cmd.exe /C "C:\All-In-One-Version\MAS_AIO.cmd /KMS38"
-  } -ComputerName $ServerMachines -PassThru
+    cmd.exe /C "C:\All-In-One-Version\MAS_AIO.cmd /KMS38 /s"
+  } -ComputerName $ServerMachines -PassThru -ErrorAction Continue
   if ($Office) {
     Invoke-LabCommand -ScriptBlock {
-      cmd.exe /C "C:\All-In-One-Version\MAS_AIO.cmd /HWID /KMS-Office /KMS-RenewalTask"
-    } -ComputerName $ClientMachines -PassThru
+      cmd.exe /C "C:\All-In-One-Version\MAS_AIO.cmd /HWID /KMS-Office /KMS-RenewalTask /s"
+    } -ComputerName $ClientMachines -PassThru -ErrorAction Continue
   }
   else {
     Invoke-LabCommand -ScriptBlock {
-      cmd.exe /C "C:\All-In-One-Version\MAS_AIO.cmd /HWID"
-    } -ComputerName $ClientMachines -PassThru
+      cmd.exe /C "C:\All-In-One-Version\MAS_AIO.cmd /HWID /s"
+    } -ComputerName $ClientMachines -PassThru -ErrorAction Continue
   }
+  Invoke-LabCommand -ScriptBlock {
+    Remove-Item -Path "C:\All-In-One-Version" -Force -Recurse | Where-Object { $_.PSIsContainer }
+  } -ComputerName (Get-LabVM) -PassThru -ErrorAction
 }
 
 function Add-MockData {
