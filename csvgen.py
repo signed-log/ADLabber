@@ -9,10 +9,10 @@ from faker import Faker
 import validators
 
 fake = Faker("fr_FR")
-Faker.seed(secrets.randbelow(5000000000000))
+Faker.seed(secrets.token_hex(128))
 
 
-def validate_domain(astring):
+def validate_domain(astring) -> str:
     if not validators.domain(astring):
         raise argparse.ArgumentTypeError("Domain name is invalid")
     else:
@@ -31,6 +31,7 @@ DomainName = args.domain_name[0].lower()
 RootOU = args.root_ou[0].lower()
 
 space_regex = re.compile(r"\s+", re.UNICODE)
+
 
 def strip_accents(s):
     # Code licensed under CC-BY-SA 3.0 : https://stackoverflow.com/a/518232
@@ -52,7 +53,7 @@ def gen_data():
         LastName.append(space_regex.sub("", strip_accents(fake.last_name())))
         EmployeeID.append(id)
         UserPrincipalName.append(
-            f"{FirstName[-1][0].lower()}.{shorten(''.join(filter(str.isalpha, LastName[-1])), width=13, placeholder='').lower()}@{DomainName}"
+            f"{FirstName[-1][0].lower()}.{shorten(''.join(filter(str.isalpha, LastName[-1])), width=13, placeholder='').lower()}@{DomainName}" # noqa
         )
         SamAccountName.append(UserPrincipalName[-1].split('@')[0])
         AccountPassword.append(secrets.token_urlsafe(32))

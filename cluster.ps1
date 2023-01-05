@@ -31,8 +31,10 @@
 [CmdletBinding(DefaultParametersetName = 'None')]
 param(
   [Parameter(Mandatory)]
+  [ValidatePattern('\b((?=[a-z0-9-]{1,63}\.)[a-z0-9]+(-[a-z0-9]+)*\.)+[a-z]{2,63}\b')]
   [string]$DomainName,
   [Parameter(Mandatory)]
+  
   [string]$LabName,
   [Parameter()]
   $RAM = 4GB,
